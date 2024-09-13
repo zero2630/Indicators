@@ -305,6 +305,11 @@ void SqueezeMomentum(int candles_count, struct Candle *candles, size_t BB_length
         else if(lowerBB[i] < lowerKC[i] && upperBB[i] > upperKC[i]) printf("squeeze released\n");
         else printf("no squeeze\n");
     }
+
+	free(upperBB);
+	free(lowerBB);
+	free(upperKC);
+	free(lowerKC);
 }
 
 
