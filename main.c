@@ -248,6 +248,49 @@ void BollingerBands(int candles_count, struct Candle *candles, size_t BB_length,
 }
 
 
+void KeltnerChannel(int candles_count, struct Candle *candles, size_t KC_length, size_t KC_mult, char useTrueRange)
+{
+    double *close_values = malloc(candles_count * sizeof(double));
+    double *ma = malloc(candles_count * sizeof(double));
+    double *rangema = malloc(candles_count * sizeof(double));
+    double *upperKC = calloc(candles_count, sizeof(double));
+    double *lowerKC = calloc(candles_count, sizeof(double));
+    double *range = calloc(candles_count, sizeof(double));
+
+    for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
+
+    SMA(candles_count, close_values, ma, KC_length);
+
+    {
+        double high, low, prev_close;
+        if(useTrueRange) {
+            for(int i=1; i<candles_count; i++) {
+                high = candles[i].max;
+                low = candles[i].min;
+                prev_close = candles[i-1].close;
+                range[i] = fmax(fmax(high - low, fabs(high - prev_close)), fabs(low - prev_close));
+            }
+        }
+        else {
+            for(int i=1; i<candles_count; i++) {
+                high = candles[i].max;
+                low = candles[i].min;
+                range[i] = high - low;
+            }
+        }
+    }
+
+    SMA(candles_count, range, rangema, KC_length);
+
+    for(int i=KC_length; i<candles_count; i++) {
+        upperKC[i] = ma[i] + rangema[i] * KC_mult;
+        lowerKC[i] = ma[i] - rangema[i] * KC_mult;
+        printf("upperKC: %lf | lowerKC: %lf\n", upperKC[i], lowerKC[i]);
+    }
+
+}
+
+
 int main() {
     // gcc main.c -Wall -Wextra -o  main -lm
 	/*
@@ -270,7 +313,8 @@ int main() {
 
     /* начало логики работы со свечами */
 	
-	BollingerBands(candles_count, candles, 20, 1.5);
+	BollingerBands(candles_count, candles, 20, 2.0);
+	//KeltnerChannel(candles_count, candles, 20, 1.5, 1);
 
     /* конец логики работы со свечами */
 
