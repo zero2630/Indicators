@@ -75,12 +75,10 @@ void EMA(int length, double *values, double *EMA_values, unsigned int wide)
 
 }
 
-void BollingerBands(int candles_count, struct Candle *candles, size_t BB_length, size_t BB_mult)
+void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, double *lowerBB, size_t BB_length, size_t BB_mult)
 {
     double *close_values = malloc(candles_count * sizeof(double));
     double *basic = malloc(candles_count * sizeof(double));
-    double *upperBB = calloc(candles_count, sizeof(double));
-    double *lowerBB = calloc(candles_count, sizeof(double));
     double deviation;
 
     for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
@@ -91,22 +89,17 @@ void BollingerBands(int candles_count, struct Candle *candles, size_t BB_length,
         deviation = BB_mult * calculateStandardDeviation(i+1, i-BB_length+1, close_values);
         upperBB[i] = basic[i] + deviation;
         lowerBB[i] = basic[i] - deviation;
-        printf("upperBB: %lf | lowerBB: %lf\n", upperBB[i], lowerBB[i]);
     }
 
     free(close_values);
     free(basic);
-    free(upperBB);
-    free(lowerBB);
 }
 
-void KeltnerChannel(int candles_count, struct Candle *candles, size_t KC_length, size_t KC_mult, char useTrueRange)
+void KeltnerChannel(int candles_count, struct Candle *candles, double *upperKC, double *lowerKC, size_t KC_length, size_t KC_mult, char useTrueRange)
 {
     double *close_values = malloc(candles_count * sizeof(double));
     double *ma = malloc(candles_count * sizeof(double));
     double *rangema = malloc(candles_count * sizeof(double));
-    double *upperKC = calloc(candles_count, sizeof(double));
-    double *lowerKC = calloc(candles_count, sizeof(double));
     double *range = calloc(candles_count, sizeof(double));
 
     for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
@@ -130,6 +123,7 @@ void KeltnerChannel(int candles_count, struct Candle *candles, size_t KC_length,
                 range[i] = high - low;
             }
         }
+
     }
 
     SMA(candles_count, range, rangema, KC_length);
@@ -137,7 +131,29 @@ void KeltnerChannel(int candles_count, struct Candle *candles, size_t KC_length,
     for(int i=KC_length; i<candles_count; i++) {
         upperKC[i] = ma[i] + rangema[i] * KC_mult;
         lowerKC[i] = ma[i] - rangema[i] * KC_mult;
-        printf("upperKC: %lf | lowerKC: %lf\n", upperKC[i], lowerKC[i]);
     }
 
+    free(close_values);
+    free(ma);
+    free(rangema);
+    free(range);
+
+}
+
+
+void SqueezeMomentum(int candles_count, struct Candle *candles, size_t BB_length, size_t BB_mult, size_t KC_length, size_t KC_mult, char useTrueRange)
+{
+    double *upperBB = calloc(candles_count, sizeof(double));
+    double *lowerBB = calloc(candles_count, sizeof(double));
+    double *upperKC = calloc(candles_count, sizeof(double));
+    double *lowerKC = calloc(candles_count, sizeof(double));
+
+    BollingerBands(candles_count, candles, upperBB, lowerBB, BB_length, BB_mult);
+    KeltnerChannel(candles_count, candles, upperKC, lowerKC, KC_length, KC_mult, useTrueRange);
+
+    for(int i=0; i<candles_count; i++) {
+        if(lowerBB[i] > lowerKC[i] && upperBB[i] < upperKC[i]) printf("squeeze on\n");
+        else if(lowerBB[i] < lowerKC[i] && upperBB[i] > upperKC[i]) printf("squeeze released\n");
+        else printf("no squeeze");
+    }
 }
