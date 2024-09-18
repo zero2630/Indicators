@@ -163,31 +163,6 @@ void buysell(Candle *candles, int candles_count, float start_cash, int *arr)
 	printf("max value is %f\r\n", max_val);
 }
 
-
-double calculateStandardDeviation(int N, int start_pos, double *values)
-{
-    
-    double sum = 0;
-    for (int i = start_pos; i < N; i++) {
-        sum += values[i];
-    }
- 
-    double middle_val = sum / N;
- 
-    double quadrats = 0;
- 
-    for (int i = start_pos; i < N; i++) {
-        quadrats += pow(values[i] - middle_val, 2);
-    }
- 
-    double variance = quadrats / N;
- 
-    double standardDeviation = sqrt(variance);
- 
-    return standardDeviation;
-}
-
-
 void SMA(int length, double *values, double *SMA_values, unsigned int wide)
 {
     SMA_values[0] = values[0];
@@ -224,6 +199,22 @@ void EMA(int length, double *values, double *EMA_values, unsigned int wide)
 
 }
 
+double calculateStandardDeviation(int N, int start_pos, double *values, double *SMA_values)
+{
+ 
+    double quadrats = 0;
+ 
+    for (int i = start_pos; i < N; i++) {
+        quadrats += pow(values[i] - SMA_values[i], 2);
+    }
+ 
+    double variance = quadrats / N;
+ 
+    double standardDeviation = sqrt(variance);
+ 
+    return standardDeviation;
+}
+
 void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, double *lowerBB, size_t BB_length, size_t BB_mult)
 {
     double *close_values = malloc(candles_count * sizeof(double));
@@ -235,7 +226,7 @@ void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, 
     SMA(candles_count, close_values, basic, BB_length);
     
     for(int i=BB_length; i<candles_count; i++) {
-        deviation = BB_mult * calculateStandardDeviation(i+1, i-BB_length+1, close_values);
+        deviation = BB_mult * calculateStandardDeviation(i+1, i-BB_length+1, close_values, basic);
         upperBB[i] = basic[i] + deviation;
         lowerBB[i] = basic[i] - deviation;
     }
@@ -296,22 +287,21 @@ void SqueezeMomentum(int candles_count, struct Candle *candles, size_t BB_length
     double *lowerBB = calloc(candles_count, sizeof(double));
     double *upperKC = calloc(candles_count, sizeof(double));
     double *lowerKC = calloc(candles_count, sizeof(double));
+	int counter=0;
 
     BollingerBands(candles_count, candles, upperBB, lowerBB, BB_length, BB_mult);
     KeltnerChannel(candles_count, candles, upperKC, lowerKC, KC_length, KC_mult, useTrueRange);
 
     for(int i=0; i<candles_count; i++) {
-        if(lowerBB[i] > lowerKC[i] && upperBB[i] < upperKC[i]) printf("squeeze on\n");
+        if(lowerBB[i] > lowerKC[i] && upperBB[i] < upperKC[i]) {
+			printf("squeeze on\n");
+			counter++;
+		}
         else if(lowerBB[i] < lowerKC[i] && upperBB[i] > upperKC[i]) printf("squeeze released\n");
-        else printf("no squeeze\n");
+        else printf("no squeeze");
     }
-
-	free(upperBB);
-	free(lowerBB);
-	free(upperKC);
-	free(lowerKC);
+	printf("%d\n", counter);
 }
-
 
 int main() {
     // gcc main.c -Wall -Wextra -o  main -lm
@@ -335,8 +325,6 @@ int main() {
 
     /* начало логики работы со свечами */
 	
-	//BollingerBands(candles_count, candles, 20, 2.0);
-	//KeltnerChannel(candles_count, candles, upperKC, lowerKC, 20, 1.5, 1);
 	SqueezeMomentum(candles_count, candles, 20, 2.0, 20, 1.5, 1);
 
     /* конец логики работы со свечами */

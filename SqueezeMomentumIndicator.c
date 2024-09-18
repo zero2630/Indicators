@@ -15,28 +15,6 @@ typedef struct Candle{
 } Candle;
 
 
-double calculateStandardDeviation(int N, int start_pos, double *values)
-{
-    
-    double sum = 0;
-    for (int i = start_pos; i < N; i++) {
-        sum += values[i];
-    }
- 
-    double middle_val = sum / N;
- 
-    double quadrats = 0;
- 
-    for (int i = start_pos; i < N; i++) {
-        quadrats += pow(values[i] - middle_val, 2);
-    }
- 
-    double variance = quadrats / N;
- 
-    double standardDeviation = sqrt(variance);
- 
-    return standardDeviation;
-}
 
 
 void SMA(int length, double *values, double *SMA_values, unsigned int wide)
@@ -75,6 +53,22 @@ void EMA(int length, double *values, double *EMA_values, unsigned int wide)
 
 }
 
+double calculateStandardDeviation(int N, int start_pos, double *values, double *SMA_values)
+{
+ 
+    double quadrats = 0;
+ 
+    for (int i = start_pos; i < N; i++) {
+        quadrats += pow(values[i] - SMA_values[i], 2);
+    }
+ 
+    double variance = quadrats / N;
+ 
+    double standardDeviation = sqrt(variance);
+ 
+    return standardDeviation;
+}
+
 void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, double *lowerBB, size_t BB_length, size_t BB_mult)
 {
     double *close_values = malloc(candles_count * sizeof(double));
@@ -86,7 +80,7 @@ void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, 
     SMA(candles_count, close_values, basic, BB_length);
     
     for(int i=BB_length; i<candles_count; i++) {
-        deviation = BB_mult * calculateStandardDeviation(i+1, i-BB_length+1, close_values);
+        deviation = BB_mult * calculateStandardDeviation(i+1, i-BB_length+1, close_values, basic);
         upperBB[i] = basic[i] + deviation;
         lowerBB[i] = basic[i] - deviation;
     }
