@@ -163,35 +163,15 @@ void buysell(Candle *candles, int candles_count, float start_cash, int *arr)
 	printf("max value is %f\r\n", max_val);
 }
 
-float max_candle(struct Candle *candles, size_t left_end, size_t right_end)
+
+void Gap(int candles_count, struct Candle *candles)
 {
-    float max = candles[left_end].max;
-    for(int i=left_end; i<right_end; i++) {
-        if(candles[left_end+i].max>max) max = candles[left_end+i].max;
-    }
-    return max;
-}
-
-
-float min_candle(struct Candle *candles, size_t left_end, size_t right_end)
-{
-    float min = candles[left_end].min;
-    for(int i=left_end; i<right_end; i++) {
-        if(candles[left_end+i].min<min) min = candles[left_end+i].min;
-    }
-    return min;
-}
-
-
-
-void Spike(int candles_count, struct Candle *candles, float p, int n)
-{
-    for(int i=n; i<candles_count; i++) {
-		if(candles[i].max - fmax(max_candle(candles, i-n, i), max_candle(candles, i+1, i+n+1)) > p) {
-			printf("%d: SpikeMax\n", i);
+    for(int i=1; i<candles_count; i++) {
+		if(candles[i-1].max < candles[i].min) {
+			printf("%d: GapHigh\n", i);
 		}
-		else if(fmin(min_candle(candles, i-n, i), min_candle(candles, i+1, i+n+1)) - candles[i].min > p) {
-			printf("%d: SpikeMin\n", i);
+		else if(candles[i-1].min > candles[i].max) {
+			printf("%d: GapLow\n", i);
 		}
     }
 }
@@ -218,7 +198,7 @@ int main() {
 
     /* начало логики работы со свечами */
 	
-	Spike(candles_count, candles, 1, 10);
+	Gap(candles_count, candles);
 
     /* конец логики работы со свечами */
 
