@@ -163,144 +163,37 @@ void buysell(Candle *candles, int candles_count, float start_cash, int *arr)
 	printf("max value is %f\r\n", max_val);
 }
 
-void SMA(int length, double *values, double *SMA_values, unsigned int wide)
+float max_candle(struct Candle *candles, size_t left_end, size_t right_end)
 {
-    SMA_values[0] = values[0];
-
-    for(int i=1; i<length; i++)
-    {
-        if(i+1<=wide)
-        {
-            double el_sum = 0;
-            for(int j=0; j<i+1; j++)
-            {
-                el_sum += values[j];
-            }
-            SMA_values[i] = el_sum / (i+1);
-        }
-        else
-        {
-            SMA_values[i] = SMA_values[i-1] - values[i-wide] / wide + values[i] / wide;
-        }
+    float max = candles[left_end].max;
+    for(int i=left_end; i<right_end; i++) {
+        if(candles[left_end+i].max>max) max = candles[left_end+i].max;
     }
-
+    return max;
 }
 
 
-void EMA(int length, double *values, double *EMA_values, unsigned int wide)
+float min_candle(struct Candle *candles, size_t left_end, size_t right_end)
 {
-    EMA_values[0] = values[0];
-    const double k = (double)2 / (double)(wide + 1);
-
-    for(int i=1; i<length; i++)
-    {
-            EMA_values[i] = values[i] * k + EMA_values[i-1] * (1 - k);
+    float min = candles[left_end].min;
+    for(int i=left_end; i<right_end; i++) {
+        if(candles[left_end+i].min<min) min = candles[left_end+i].min;
     }
-
-}
-
-double calculateStandardDeviation(int N, int start_pos, double *values, double *SMA_values)
-{
- 
-    double quadrats = 0;
- 
-    for (int i = start_pos; i < N; i++) {
-        quadrats += pow(values[i] - SMA_values[i], 2);
-    }
- 
-    double variance = quadrats / N;
- 
-    double standardDeviation = sqrt(variance);
- 
-    return standardDeviation;
-}
-
-void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, double *lowerBB, size_t BB_length, size_t BB_mult)
-{
-    double *close_values = malloc(candles_count * sizeof(double));
-    double *basic = malloc(candles_count * sizeof(double));
-    double deviation;
-
-    for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
-
-    SMA(candles_count, close_values, basic, BB_length);
-    
-    for(int i=BB_length; i<candles_count; i++) {
-        deviation = BB_mult * calculateStandardDeviation(i+1, i-BB_length+1, close_values, basic);
-        upperBB[i] = basic[i] + deviation;
-        lowerBB[i] = basic[i] - deviation;
-    }
-
-    free(close_values);
-    free(basic);
-}
-
-void KeltnerChannel(int candles_count, struct Candle *candles, double *upperKC, double *lowerKC, size_t KC_length, size_t KC_mult, char useTrueRange)
-{
-    double *close_values = malloc(candles_count * sizeof(double));
-    double *ma = malloc(candles_count * sizeof(double));
-    double *rangema = malloc(candles_count * sizeof(double));
-    double *range = calloc(candles_count, sizeof(double));
-
-    for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
-
-    SMA(candles_count, close_values, ma, KC_length);
-
-    {
-        double high, low, prev_close;
-        if(useTrueRange) {
-            for(int i=1; i<candles_count; i++) {
-                high = candles[i].max;
-                low = candles[i].min;
-                prev_close = candles[i-1].close;
-                range[i] = fmax(fmax(high - low, fabs(high - prev_close)), fabs(low - prev_close));
-            }
-        }
-        else {
-            for(int i=1; i<candles_count; i++) {
-                high = candles[i].max;
-                low = candles[i].min;
-                range[i] = high - low;
-            }
-        }
-
-    }
-
-    SMA(candles_count, range, rangema, KC_length);
-
-    for(int i=KC_length; i<candles_count; i++) {
-        upperKC[i] = ma[i] + rangema[i] * KC_mult;
-        lowerKC[i] = ma[i] - rangema[i] * KC_mult;
-    }
-
-    free(close_values);
-    free(ma);
-    free(rangema);
-    free(range);
-
+    return min;
 }
 
 
-void SqueezeMomentum(int candles_count, struct Candle *candles, size_t BB_length, size_t BB_mult, size_t KC_length, size_t KC_mult, char useTrueRange)
+
+void Spike(int candles_count, struct Candle *candles, float p, int n)
 {
-    double *upperBB = calloc(candles_count, sizeof(double));
-    double *lowerBB = calloc(candles_count, sizeof(double));
-    double *upperKC = calloc(candles_count, sizeof(double));
-    double *lowerKC = calloc(candles_count, sizeof(double));
-	int counter=0;
-
-    BollingerBands(candles_count, candles, upperBB, lowerBB, BB_length, BB_mult);
-    KeltnerChannel(candles_count, candles, upperKC, lowerKC, KC_length, KC_mult, useTrueRange);
-
-    for(int i=0; i<candles_count; i++) {
-        if(lowerBB[i] > lowerKC[i] && upperBB[i] < upperKC[i]) {
-			printf("squeeze on\n");
-			counter++;
+    for(int i=n; i<candles_count; i++) {
+		if(candles[i].max - fmax(max_candle(candles, i-n, i), max_candle(candles, i+1, i+n+1)) > p) {
+			printf("%d: SpikeMax\n", i);
 		}
-        else if(lowerBB[i] < lowerKC[i] && upperBB[i] > upperKC[i]) printf("squeeze released\n");
-        else printf("no squeeze");
+		else if(fmin(min_candle(candles, i-n, i), min_candle(candles, i+1, i+n+1)) - candles[i].min > p) {
+			printf("%d: SpikeMin\n", i);
+		}
     }
-	printf("%d\n", counter);
 }
 
 int main() {
@@ -325,7 +218,7 @@ int main() {
 
     /* начало логики работы со свечами */
 	
-	SqueezeMomentum(candles_count, candles, 20, 2.0, 20, 1.5, 1);
+	Spike(candles_count, candles, 1, 10);
 
     /* конец логики работы со свечами */
 
