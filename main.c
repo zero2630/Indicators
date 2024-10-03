@@ -164,13 +164,13 @@ void buysell(Candle *candles, int candles_count, float start_cash, int *arr)
 }
 
 
-void Gap(int candles_count, struct Candle *candles)
+void ExhaustionGap(int candles_count, struct Candle *candles)
 {
     for(int i=1; i<candles_count; i++) {
-		if(candles[i-1].max < candles[i].min) {
+		if(candles[i-1].max < candles[i].min && candles[i].volume < candles[i-1].volume) {
 			printf("%d: GapHigh\n", i);
 		}
-		else if(candles[i-1].min > candles[i].max) {
+		else if(candles[i-1].min > candles[i].max && candles[i].volume < candles[i-1].volume) {
 			printf("%d: GapLow\n", i);
 		}
     }
@@ -198,7 +198,7 @@ int main() {
 
     /* начало логики работы со свечами */
 	
-	Gap(candles_count, candles);
+	ExhaustionGap(candles_count, candles);
 
     /* конец логики работы со свечами */
 
