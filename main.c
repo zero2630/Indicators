@@ -86,11 +86,11 @@ int load_bin(int *candles_count, Candle **candles, int data_frame)
 	return 0;
 }
 
-int load_text(int *candles_count, Candle **candles, char *graphic_name, int data_frame)
+int load_text(int *candles_count, Candle **candles)
 {
 	FILE *f;
     char *filename = calloc(30, sizeof(char));
-    sprintf(filename, "text/%s_%02d.txt", graphic_name, data_frame);
+    sprintf(filename, "./data/data.txt");
 
     f = fopen(filename, "r");
     if (!f) {
@@ -164,19 +164,138 @@ void buysell(Candle *candles, int candles_count, float start_cash, int *arr)
 }
 
 
-void ExhaustionGap(int candles_count, struct Candle *candles)
+void save_indicator_text(int length, char *values)
 {
+	FILE *f = fopen("./data/indicator_data.txt", "w");
+	for(int i=0; i<length; i++)
+	{
+		fprintf(f, "%hhd\n", values[i]);
+	}
+	fclose(f);
+}
+
+
+void save_lines_text(int length, double *values)
+{
+	FILE *f = fopen("./data/indicator_data.txt", "w");
+	for(int i=0; i<length; i++)
+	{
+		fprintf(f, "%lf\n", values[i]);
+	}
+	fclose(f);
+}
+
+
+void Gap(int candles_count, struct Candle *candles, char *values)
+{
+	values[0] = 0;
     for(int i=1; i<candles_count; i++) {
-		if(candles[i-1].max < candles[i].min && candles[i].volume < candles[i-1].volume) {
-			printf("%d: GapHigh\n", i);
+		if(candles[i-1].max < candles[i].min) {
+			values[i] = 1;
 		}
-		else if(candles[i-1].min > candles[i].max && candles[i].volume < candles[i-1].volume) {
-			printf("%d: GapLow\n", i);
+		else if(candles[i-1].min > candles[i].max) {
+			values[i] = -1;
+		}
+		else {
+			values[i] = 0;
 		}
     }
 }
 
-int main() {
+
+void ThrustDay(int candles_count, struct Candle *candles, float p, char *values)
+{
+	values[0] = 0;
+    for(int i=1; i<candles_count; i++) {
+		if(candles[i].close - candles[i-1].max > p) {
+			values[i] = 1;
+		}
+		else if(candles[i-1].min - candles[i].close > p) {
+			values[i] = -1;
+		}
+		else {
+			values[i] = 0;
+		}
+    }
+}
+
+
+float max_candle(struct Candle *candles, size_t left_end, size_t right_end)
+{
+    float max = candles[left_end].max;
+    for(int i=left_end; i<right_end; i++) {
+        if(candles[left_end+i].max>max) max = candles[left_end+i].max;
+    }
+    return max;
+}
+
+
+float min_candle(struct Candle *candles, size_t left_end, size_t right_end)
+{
+    float min = candles[left_end].min;
+    for(int i=left_end; i<right_end; i++) {
+        if(candles[left_end+i].min<min) min = candles[left_end+i].min;
+    }
+    return min;
+}
+
+
+
+void Spike(int candles_count, struct Candle *candles, float p, int n, char *values)
+{
+	for(int i=0; i<n; i++) {
+		values[i] = 0;
+	}
+    for(int i=n; i<candles_count; i++) {
+		if(candles[i].max - fmax(max_candle(candles, i-n, i), max_candle(candles, i+1, i+n+1)) > p) {
+			values[i] = 1;
+		}
+		else if(fmin(min_candle(candles, i-n, i), min_candle(candles, i+1, i+n+1)) - candles[i].min > p) {
+			values[i] = -1;
+		}
+		else {
+			values[i] = 0;
+		}
+    }
+}
+
+
+void PVI(int candles_count, struct Candle *candles, double* values)
+{
+    for(int i=1; i<candles_count; i++)
+    {
+        if(candles[i].volume > candles[i-1].volume && candles[i].close > candles[i-1].close)
+        {
+            values[i] = values[i-1] + (candles[i].close - candles[i-1].close) / candles[i-1].close;
+        }
+    }
+}
+
+void SMA(int length, double *values, double *SMA_values, unsigned int wide)
+{
+    SMA_values[0] = values[0];
+
+    for(int i=1; i<length; i++)
+    {
+        if(i+1<=wide)
+        {
+            double el_sum = 0;
+            for(int j=0; j<i+1; j++)
+            {
+                el_sum += values[j];
+            }
+            SMA_values[i] = el_sum / (i+1);
+        }
+        else
+        {
+            SMA_values[i] = SMA_values[i-1] - values[i-wide] / wide + values[i] / wide;
+        }
+    }
+
+}
+
+
+int main(int argc, char* argv[]) {
     // gcc main.c -Wall -Wextra -o  main -lm
 	/*
 		01 - минутные свечки
@@ -194,12 +313,37 @@ int main() {
 
     // Получение свечей из бинарника
 	// load_bin(&candles_count, &candles, frame);
-	load_text(&candles_count, &candles, "sber", frame);
+	load_text(&candles_count, &candles);
 
     /* начало логики работы со свечами */
-	
-	ExhaustionGap(candles_count, candles);
+	char *indicator_values = malloc(candles_count * sizeof(char));
+	double *lines_values = malloc(candles_count * sizeof(double));
+	if(argc==3) {
+		if(strcmp(argv[1], "i") == 0) {
+			if(strcmp(argv[2], "spike") == 0) {
+				Spike(candles_count, candles, 1, 10, indicator_values);
+			}
+			else if(strcmp(argv[2], "gap") == 0) {
+				Gap(candles_count, candles, indicator_values);
+			}
+			else if(strcmp(argv[2], "thrust_day") == 0) {
+				ThrustDay(candles_count, candles, 1, indicator_values);
+			}
+			save_indicator_text(candles_count, indicator_values);
+		}
 
+		else if(strcmp(argv[1], "l") == 0) {
+			if(strcmp(argv[2], "pvi") == 0) {
+				PVI(candles_count, candles, lines_values);
+			}
+			else if(strcmp(argv[2], "sma") == 0) {
+				double *close_values = malloc(candles_count * sizeof(double));
+				for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
+				SMA(candles_count, close_values, lines_values, 5);
+			}
+			save_lines_text(candles_count, lines_values);
+		}
+	}
     /* конец логики работы со свечами */
 
 	return 0;
