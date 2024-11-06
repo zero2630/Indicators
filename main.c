@@ -295,6 +295,23 @@ void SMA(int length, double *values, double *SMA_values, unsigned int wide)
 }
 
 
+void true_extremum(int length, Candle* candles, int n, double* res_values_max, double* res_values_min)
+{
+    float max, min;
+    
+    for(int i=n; i<length; i++) {
+        max = max_candle(candles, i-n, i+n+1);
+        min = min_candle(candles, i-n, i+n+1);
+
+        if(max > candles[i-1].close) res_values_max[i] = max;
+        else res_values_max[i] = candles[i-1].close;
+
+        if(min < candles[i-1].close) res_values_min[i] = min;
+        else res_values_min[i] = candles[i-1].close;
+    }
+}
+
+
 int main(int argc, char* argv[]) {
     // gcc main.c -Wall -Wextra -o  main -lm
 	/*
@@ -316,8 +333,10 @@ int main(int argc, char* argv[]) {
 	load_text(&candles_count, &candles);
 
     /* начало логики работы со свечами */
-	char *indicator_values = malloc(candles_count * sizeof(char));
-	double *lines_values = malloc(candles_count * sizeof(double));
+	char *indicator_values = calloc(candles_count, sizeof(char));
+	double *lines_values = calloc(candles_count, sizeof(double));
+	double *lines_values2 = calloc(candles_count, sizeof(double));
+
 	if(argc==3) {
 		if(strcmp(argv[1], "i") == 0) {
 			if(strcmp(argv[2], "spike") == 0) {
@@ -340,6 +359,9 @@ int main(int argc, char* argv[]) {
 				double *close_values = malloc(candles_count * sizeof(double));
 				for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
 				SMA(candles_count, close_values, lines_values, 5);
+			}
+			else if(strcmp(argv[2], "truemax") == 0) {
+				true_extremum(candles_count, candles, 10, lines_values, lines_values2);
 			}
 			save_lines_text(candles_count, lines_values);
 		}

@@ -36,9 +36,9 @@ float min_candle(struct Candle *candles, size_t left_end, size_t right_end)
 }
 
 
-void true_extremum(int length, Candle* candles, int n, float* res_values_max, float* res_values_min)
+void true_extremum(int length, Candle* candles, int n, double* res_values_max, double* res_values_min)
 {
-    float max, min;
+    double max, min;
     
     for(int i=n; i<length; i++) {
         max = max_candle(candles, i-n, i+n+1);
