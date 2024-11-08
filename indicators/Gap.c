@@ -14,14 +14,18 @@ typedef struct Candle{
 } Candle;
 
 
-void Gap(int candles_count, struct Candle *candles)
+void Gap(int candles_count, struct Candle *candles, char *values)
 {
+	values[0] = 0;
     for(int i=1; i<candles_count; i++) {
 		if(candles[i-1].max < candles[i].min) {
-			printf("%d: GapHigh\n", i);
+			values[i] = 1;
 		}
 		else if(candles[i-1].min > candles[i].max) {
-			printf("%d: GapLow\n", i);
+			values[i] = -1;
+		}
+		else {
+			values[i] = 0;
 		}
     }
 }
