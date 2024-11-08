@@ -2,9 +2,10 @@
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
-#include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
+
+// #include "utils.h"
 
 
 typedef struct Candle{
@@ -175,7 +176,7 @@ void save_indicator_text(int length, char *values)
 }
 
 
-void save_lines_text(int length, double *values)
+void save_lines_text(int length, float *values)
 {
 	FILE *f = fopen("./data/lines_data.txt", "w");
 	for(int i=0; i<length; i++)
@@ -247,10 +248,10 @@ void Spike(int candles_count, struct Candle *candles, float p, int n, char *valu
 		values[i] = 0;
 	}
     for(int i=n; i<candles_count; i++) {
-		if(candles[i].max - fmax(max_candle(candles, i-n, i), max_candle(candles, i+1, i+n+1)) > p) {
+		if(candles[i].max - fmaxf(max_candle(candles, i-n, i), max_candle(candles, i+1, i+n+1)) > p) {
 			values[i] = 1;
 		}
-		else if(fmin(min_candle(candles, i-n, i), min_candle(candles, i+1, i+n+1)) - candles[i].min > p) {
+		else if(fminf(min_candle(candles, i-n, i), min_candle(candles, i+1, i+n+1)) - candles[i].min > p) {
 			values[i] = -1;
 		}
 		else {
@@ -260,7 +261,7 @@ void Spike(int candles_count, struct Candle *candles, float p, int n, char *valu
 }
 
 
-void PVI(int candles_count, struct Candle *candles, double* values)
+void PVI(int candles_count, struct Candle *candles, float* values)
 {
     for(int i=1; i<candles_count; i++)
     {
@@ -271,7 +272,7 @@ void PVI(int candles_count, struct Candle *candles, double* values)
     }
 }
 
-void SMA(int length, double *values, double *SMA_values, unsigned int wide)
+void SMA(int length, float *values, float *SMA_values, int wide)
 {
     SMA_values[0] = values[0];
 
@@ -279,7 +280,7 @@ void SMA(int length, double *values, double *SMA_values, unsigned int wide)
     {
         if(i+1<=wide)
         {
-            double el_sum = 0;
+            float el_sum = 0;
             for(int j=0; j<i+1; j++)
             {
                 el_sum += values[j];
@@ -295,7 +296,7 @@ void SMA(int length, double *values, double *SMA_values, unsigned int wide)
 }
 
 
-void true_extremum(int length, Candle* candles, int n, double* res_values_max, double* res_values_min)
+void true_extremum(int length, Candle* candles, int n, float* res_values_max, float* res_values_min)
 {
     float max, min;
     
@@ -308,6 +309,58 @@ void true_extremum(int length, Candle* candles, int n, double* res_values_max, d
 
         if(min < candles[i-1].close) res_values_min[i] = min;
         else res_values_min[i] = candles[i-1].close;
+    }
+}
+
+
+void super_trend(int length, Candle* candles, int n, float multiplier, char *trend)
+{
+    float *atr = calloc(length, sizeof(float));
+    float *truemax = calloc(length, sizeof(float));
+    float *truemin = calloc(length, sizeof(float));
+    float *substract_res = calloc(length, sizeof(float));
+    float *src = calloc(length, sizeof(float));
+    float *p = calloc(length, sizeof(float));
+    float *up = calloc(length, sizeof(float));
+    float *up1 = calloc(length, sizeof(float));
+    float *dn = calloc(length, sizeof(float));
+    float *dn1 = calloc(length, sizeof(float));
+
+    true_extremum(length, candles, n, truemax, truemin);
+    for(int i=0; i<length; i++) {
+        substract_res[i] = truemax[i] - truemin[i];
+    }
+    SMA(length, substract_res, atr, n);
+
+    for(int i=1; i<length; i++) {
+        src[i] = (candles[i].max-candles[i].min)/2;
+        up[i] = src[i] - atr[i] * multiplier;
+
+        if(up[i-1] != 0) up1[i] = up[i-1];
+        else if(up[i] != 0) up1[i] = up[i];
+
+        if(candles[i-1].close > up[i]) up[i] = fmaxf(up[i], up1[i]);
+
+        dn[i] = src[i] + atr[i] * multiplier;
+
+        if(dn[i-1] != 0) dn1[i] = dn[i] = dn[i-1];
+        else if(dn[i] != 0) dn1[i] = dn[i];
+
+        if(candles[i].close < dn1[i]) dn[i] = fminf(dn[i], dn1[i]);
+
+        trend[i] = 1;
+        if(trend[i-1] != 0) {
+			trend[i] = trend[i-1];
+		}
+
+        if(candles[i].close > dn1[i]) {
+			trend[i] = 1;
+		}
+        else if(candles[i].close < up1[i]) {
+			trend[i] = -1;
+		}
+		printf("%f %f\n", candles[i].close, dn1[i]);
+
     }
 }
 
@@ -326,7 +379,7 @@ int main(int argc, char* argv[]) {
 	int candles_count;
 	struct Candle *candles = NULL;
     // Выбор отрезка данных
-	int frame = 5; //atoi(argv[1]);
+	// int frame = 5; //atoi(argv[1]);
 
     // Получение свечей из бинарника
 	// load_bin(&candles_count, &candles, frame);
@@ -334,8 +387,11 @@ int main(int argc, char* argv[]) {
 
     /* начало логики работы со свечами */
 	char *indicator_values = calloc(candles_count, sizeof(char));
-	double *lines_values = calloc(candles_count, sizeof(double));
-	double *lines_values2 = calloc(candles_count, sizeof(double));
+	float *lines_values = calloc(candles_count, sizeof(float));
+	float *lines_values2 = calloc(candles_count, sizeof(float));
+
+	super_trend(candles_count, candles, 10, 2, indicator_values);
+	save_indicator_text(candles_count, indicator_values);
 
 	if(argc==3) {
 		if(strcmp(argv[1], "i") == 0) {
@@ -348,6 +404,9 @@ int main(int argc, char* argv[]) {
 			else if(strcmp(argv[2], "thrust_day") == 0) {
 				ThrustDay(candles_count, candles, 1, indicator_values);
 			}
+			else if(strcmp(argv[2], "super_trend") == 0) {
+				super_trend(candles_count, candles, 10, 2, indicator_values);
+			}
 			save_indicator_text(candles_count, indicator_values);
 		}
 
@@ -356,7 +415,7 @@ int main(int argc, char* argv[]) {
 				PVI(candles_count, candles, lines_values);
 			}
 			else if(strcmp(argv[2], "sma") == 0) {
-				double *close_values = malloc(candles_count * sizeof(double));
+				float *close_values = malloc(candles_count * sizeof(float));
 				for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
 				SMA(candles_count, close_values, lines_values, 5);
 			}

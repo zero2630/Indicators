@@ -17,7 +17,7 @@ typedef struct Candle{
 
 
 
-void SMA(int length, double *values, double *SMA_values, unsigned int wide)
+void SMA(int length, float *values, float *SMA_values, unsigned int wide)
 {
     SMA_values[0] = values[0];
 
@@ -25,7 +25,7 @@ void SMA(int length, double *values, double *SMA_values, unsigned int wide)
     {
         if(i+1<=wide)
         {
-            double el_sum = 0;
+            float el_sum = 0;
             for(int j=0; j<i+1; j++)
             {
                 el_sum += values[j];
@@ -41,10 +41,10 @@ void SMA(int length, double *values, double *SMA_values, unsigned int wide)
 }
 
 
-void EMA(int length, double *values, double *EMA_values, unsigned int wide)
+void EMA(int length, float *values, float *EMA_values, unsigned int wide)
 {
     EMA_values[0] = values[0];
-    const double k = (double)2 / (double)(wide + 1);
+    const float k = (float)2 / (float)(wide + 1);
 
     for(int i=1; i<length; i++)
     {
@@ -53,27 +53,27 @@ void EMA(int length, double *values, double *EMA_values, unsigned int wide)
 
 }
 
-double calculateStandardDeviation(int N, int start_pos, double *values, double *SMA_values)
+float calculateStandardDeviation(int N, int start_pos, float *values, float *SMA_values)
 {
  
-    double quadrats = 0;
+    float quadrats = 0;
  
     for (int i = start_pos; i < N; i++) {
         quadrats += pow(values[i] - SMA_values[i], 2);
     }
  
-    double variance = quadrats / N;
+    float variance = quadrats / N;
  
-    double standardDeviation = sqrt(variance);
+    float standardDeviation = sqrt(variance);
  
     return standardDeviation;
 }
 
-void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, double *lowerBB, size_t BB_length, size_t BB_mult)
+void BollingerBands(int candles_count, struct Candle *candles, float *upperBB, float *lowerBB, size_t BB_length, size_t BB_mult)
 {
-    double *close_values = malloc(candles_count * sizeof(double));
-    double *basic = malloc(candles_count * sizeof(double));
-    double deviation;
+    float *close_values = malloc(candles_count * sizeof(float));
+    float *basic = malloc(candles_count * sizeof(float));
+    float deviation;
 
     for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
 
@@ -89,19 +89,19 @@ void BollingerBands(int candles_count, struct Candle *candles, double *upperBB, 
     free(basic);
 }
 
-void KeltnerChannel(int candles_count, struct Candle *candles, double *upperKC, double *lowerKC, size_t KC_length, size_t KC_mult, char useTrueRange)
+void KeltnerChannel(int candles_count, struct Candle *candles, float *upperKC, float *lowerKC, size_t KC_length, size_t KC_mult, char useTrueRange)
 {
-    double *close_values = malloc(candles_count * sizeof(double));
-    double *ma = malloc(candles_count * sizeof(double));
-    double *rangema = malloc(candles_count * sizeof(double));
-    double *range = calloc(candles_count, sizeof(double));
+    float *close_values = malloc(candles_count * sizeof(float));
+    float *ma = malloc(candles_count * sizeof(float));
+    float *rangema = malloc(candles_count * sizeof(float));
+    float *range = calloc(candles_count, sizeof(float));
 
     for(int i=0; i<candles_count; i++) close_values[i] = candles[i].close;
 
     SMA(candles_count, close_values, ma, KC_length);
 
     {
-        double high, low, prev_close;
+        float high, low, prev_close;
         if(useTrueRange) {
             for(int i=1; i<candles_count; i++) {
                 high = candles[i].max;
@@ -137,10 +137,10 @@ void KeltnerChannel(int candles_count, struct Candle *candles, double *upperKC, 
 
 void SqueezeMomentum(int candles_count, struct Candle *candles, size_t BB_length, size_t BB_mult, size_t KC_length, size_t KC_mult, char useTrueRange)
 {
-    double *upperBB = calloc(candles_count, sizeof(double));
-    double *lowerBB = calloc(candles_count, sizeof(double));
-    double *upperKC = calloc(candles_count, sizeof(double));
-    double *lowerKC = calloc(candles_count, sizeof(double));
+    float *upperBB = calloc(candles_count, sizeof(float));
+    float *lowerBB = calloc(candles_count, sizeof(float));
+    float *upperKC = calloc(candles_count, sizeof(float));
+    float *lowerKC = calloc(candles_count, sizeof(float));
 
     BollingerBands(candles_count, candles, upperBB, lowerBB, BB_length, BB_mult);
     KeltnerChannel(candles_count, candles, upperKC, lowerKC, KC_length, KC_mult, useTrueRange);

@@ -1,7 +1,7 @@
 
 void PVI(int candles_count, struct Candle *candles)
 {
-    double *pvi_array = calloc(candles_count, sizeof(double));
+    float *pvi_array = calloc(candles_count, sizeof(float));
 
     for(int i=1; i<candles_count; i++)
     {
