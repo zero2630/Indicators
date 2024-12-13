@@ -365,6 +365,15 @@ void super_trend(int length, Candle* candles, int n, float multiplier, char *tre
 }
 
 
+void mg(int candles_count, Candle* candles, float* res_values)
+{
+    res_values[0] = candles[0].close;
+    for(int i=1; i<candles_count; i++) {
+        res_values[i] = res_values[i-1] + (candles[i].close - res_values[i-1]) / ( 14 * pow( (candles[i].close / res_values[i-1]), 4 ) );
+    }
+}
+
+
 int main(int argc, char* argv[]) {
     // gcc main.c -Wall -Wextra -o  main -lm
 	/*
@@ -389,9 +398,6 @@ int main(int argc, char* argv[]) {
 	char *indicator_values = calloc(candles_count, sizeof(char));
 	float *lines_values = calloc(candles_count, sizeof(float));
 	float *lines_values2 = calloc(candles_count, sizeof(float));
-
-	super_trend(candles_count, candles, 10, 2, indicator_values);
-	save_indicator_text(candles_count, indicator_values);
 
 	if(argc==3) {
 		if(strcmp(argv[1], "i") == 0) {
@@ -421,6 +427,12 @@ int main(int argc, char* argv[]) {
 			}
 			else if(strcmp(argv[2], "truemax") == 0) {
 				true_extremum(candles_count, candles, 10, lines_values, lines_values2);
+			}
+			else if(strcmp(argv[2], "truemin") == 0) {
+				true_extremum(candles_count, candles, 10, lines_values2, lines_values);
+			}
+			else if(strcmp(argv[2], "mg") == 0) {
+				mg(candles_count, candles, lines_values);
 			}
 			save_lines_text(candles_count, lines_values);
 		}
